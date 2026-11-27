@@ -9,11 +9,21 @@ public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
     private final String code;
+    private final java.util.Map<String, String> fieldErrors;
 
     public ApiException(HttpStatus status, String code, String message) {
+        this(status, code, message, null);
+    }
+
+    public ApiException(HttpStatus status, String code, String message, java.util.Map<String, String> fieldErrors) {
         super(message);
         this.status = status;
         this.code = code;
+        this.fieldErrors = fieldErrors;
+    }
+
+    public static ApiException fields(java.util.Map<String, String> errors) {
+        return new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED", "Validation failed", errors);
     }
 
     public static ApiException notFound(String what) {

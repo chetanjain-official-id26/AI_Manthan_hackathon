@@ -44,6 +44,15 @@ public class AuditWriter {
         return repo.save(ev);
     }
 
+    /**
+     * For security events that must survive the rollback of the request they describe (for example a
+     * blocked policy edit, R7). Runs in its own transaction.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public AuditEvent writeIndependent(AuditEntry e) {
+        return write(e);
+    }
+
     private String toJson(Map<String, ?> map) {
         return map == null ? null : json.writeValueAsString(map);
     }

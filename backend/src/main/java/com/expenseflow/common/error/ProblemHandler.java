@@ -32,6 +32,9 @@ public class ProblemHandler extends ResponseEntityExceptionHandler {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
         pd.setTitle(ex.getStatus().getReasonPhrase());
         pd.setProperty("code", ex.getCode());
+        if (ex.getFieldErrors() != null) {
+            pd.setProperty("errors", ex.getFieldErrors());
+        }
         return pd;
     }
 

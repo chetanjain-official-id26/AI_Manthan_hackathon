@@ -139,7 +139,7 @@ CREATE TABLE receipt (
     original_name VARCHAR(120) NOT NULL,
     content_type  VARCHAR(40)  NOT NULL,
     size_bytes    BIGINT       NOT NULL,
-    sha256        CHAR(64)     NOT NULL,
+    sha256        VARCHAR(64)  NOT NULL,
     uploaded_by   BIGINT REFERENCES employee (id),
     uploaded_at   TIMESTAMPTZ  NOT NULL
 );
@@ -200,7 +200,7 @@ CREATE TABLE payout_batch (
     claim_count  INT            NOT NULL,
     total_amount NUMERIC(14, 2) NOT NULL,
     file_name    VARCHAR(60),
-    file_sha256  CHAR(64),
+    file_sha256  VARCHAR(64),
     void_reason  VARCHAR(300),
     created_by   BIGINT         NOT NULL REFERENCES employee (id),
     created_at   TIMESTAMPTZ    NOT NULL,
