@@ -20,13 +20,62 @@ Open http://localhost:5173 and pick a demo user on the login screen.
 
 To reset and reseed: `docker compose -f ops/docker-compose.yml down -v && docker compose -f ops/docker-compose.yml up -d`
 
+The seed job finishes about 2–3 minutes after `up` and prints a summary: `docker logs ef-seed`.
+
 ## Demo users
+All people and data are synthetic. The seed is deterministic, so these users are the same on every reset.
+
 | Role | Example user |
 |---|---|
-| Employee | _filled from seed summary_ |
-| Manager | _filled from seed summary_ |
-| Auditor | _filled from seed summary_ |
-| Finance Head | _filled from seed summary_ |
+| Employee | EMP0022 Ira Bhat |
+| Manager | EMP0006 Siddharth Malhotra (active delegation to EMP0007 for 5 days) |
+| Auditor | EMP0002 Arjun Desai (also the alternate approver for the finance head's own claims) |
+| Finance Head | EMP0001 Kavita Menon |
+
+## Backend
+Spring Boot 4.1.3 on JDK 21, PostgreSQL 18, Flyway, JWT (HS256).
+
+```bash
+cd backend
+./mvnw verify          # unit + Testcontainers integration tests (Docker required) + JaCoCo report
+```
+
+Run the API locally against your own Postgres:
+```bash
+export JWT_SECRET=$(openssl rand -base64 48) DB_URL=jdbc:postgresql://localhost:5432/expenseflow
+./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
+java -jar target/expenseflow-backend.jar --spring.profiles.active=seed   # synthetic data, idempotent
+```
+
+| Area | Endpoints (base `/api`) |
+|---|---|
+| Auth | `GET /auth/demo-users`, `POST /auth/demo-login`, `GET /me` |
+| Claims | `GET/POST /claims`, `GET/PATCH /claims/{id}`, lines CRUD, `POST …/lines/{lineId}/receipt`, `GET /receipts/{id}`, `POST …/policy-preview`, `POST …/submit`, `POST …/copy`, `POST …/comments` |
+| Approvals | `POST /claims/{id}/approve`, `…/reject`, `…/send-back`, `…/steps/{stepId}/reassign`, `GET /approvals/inbox` |
+| Delegation | `GET/POST /delegations`, `DELETE /delegations/{id}`, `POST /admin/delegations` |
+| Auditor | `GET /auditor/queue`, `POST /auditor/bulk-approve` |
+| Payouts | `GET /payouts/eligible`, `GET/POST /payouts`, `GET /payouts/{id}`, `GET /payouts/{id}/csv`, `POST …/mark-paid`, `POST …/void` |
+| Dashboard | `GET /dashboard/spend-by-category`, `…/spend-by-department`, `…/spend-by-month`, `…/violations`, `…/approval-time`, `…/rule-changes` |
+| Audit / admin | `GET /audit`, `GET /admin/policy-rules`, `POST /admin/policy-rules/{code}/versions`, `POST …/rollback`, `GET /admin/approval-thresholds`, `POST …/{level}/versions` |
+
+Full OpenAPI at http://localhost:8080/swagger-ui.html. Errors are RFC 7807 `application/problem+json`.
+
+## Frontend
+React 19 + TypeScript (strict) + Vite, Tailwind 4, TanStack Query/Table, Recharts, three.js (login backdrop only, lazy-loaded).
+In compose it is the `frontend` service: nginx serves the SPA on http://localhost:5173 and proxies `/api` to `backend:8080`.
+
+```bash
+cd frontend
+npm ci && npm run dev          # http://localhost:5173, proxies /api to http://localhost:8080
+npm run typecheck && npm run lint && npm run build
+npm test                       # Vitest + Testing Library + MSW (no backend needed)
+```
+
+No backend running? On the login screen choose **Launch with Demo Mock Data**: the tab then runs on an in-memory
+mock of the same API (synthetic data). Details: [frontend/README.md](frontend/README.md); test cases:
+[docs/06b-Frontend-Test-Cases.md](docs/06b-Frontend-Test-Cases.md).
+
+E2E (Playwright, needs the compose stack): `cd tests/e2e && npm ci && npx playwright test`.
 
 ## Repository layout
 ```

@@ -1,0 +1,13 @@
+# gitleaks config: default rules, plus allow-listing of documented placeholders.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders and test-only values"
+paths = [
+  '''\.env\.example$''',
+]
+regexes = [
+  '''test-secret-that-is-definitely-longer-than-32-bytes''',
+  '''replace-with-a-random-secret-of-at-least-32-bytes''',
+]
