@@ -1,0 +1,29 @@
+# Secrets
+.env
+*.env.local
+
+# Java / Maven
+backend/target/
+*.class
+*.log
+hs_err_pid*
+
+# Receipts written by local runs
+backend/data/
+data/receipts/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Node (frontend / e2e, later)
+node_modules/
+dist/
+playwright-report/
+test-results/
+
+# Office lock files
+~$*
