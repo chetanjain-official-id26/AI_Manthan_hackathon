@@ -1,0 +1,17 @@
+{
+  "name": "expenseflow-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:desktop": "playwright test --project=desktop",
+    "test:mobile": "playwright test --project=mobile-360",
+    "report": "playwright show-report playwright-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^22.20.7",
+    "typescript": "5.9"
+  }
+}
