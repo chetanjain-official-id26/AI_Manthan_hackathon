@@ -74,8 +74,9 @@ public final class ClaimDtos {
     public record ReceiptView(Long id, String originalName, String contentType, long sizeBytes, String sha256) {
     }
 
+    /** matchClaimId / matchClaimNo identify the claim holding relatedLineId, only when the caller may see it. */
     public record ResultView(String ruleCode, int ruleVersion, Outcome outcome, String flag, String reason,
-                             Long relatedLineId) {
+                             Long relatedLineId, Long matchClaimId, String matchClaimNo) {
     }
 
     public record LineView(Long id, Category category, BigDecimal amount, LocalDate expenseDate, String vendor,

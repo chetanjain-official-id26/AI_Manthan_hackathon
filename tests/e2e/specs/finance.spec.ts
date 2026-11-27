@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { cast, isNarrow, loginApi, signInAs, uniqueAmount, uniquePng } from '../support/api';
+import { cast, employeesWithManagers, isNarrow, loginApi, signInAs, uniqueAmount, uniquePng } from '../support/api';
 
 test.describe('Auditor and finance head journeys', () => {
   test('TC-E2E-08 a duplicate receipt is flagged and shows under the auditor DUPLICATE filter', async ({ page, request }) => {
-    const { employee, otherEmployee, manager, auditor } = await cast(request);
+    const { employee, otherEmployee, manager, auditor } = await cast(request, 8);
     const bytes = uniquePng();
     const amount = uniqueAmount(30_000);
 
@@ -14,8 +14,9 @@ test.describe('Auditor and finance head journeys', () => {
     const a = await loginApi(request, employee);
     const dup = await a.createAndSubmit('E2E duplicate bill', [{ category: 'OTHER', amount, receipt: bytes }]);
 
-    const detail = await a.json<{ policyResults: { flag?: string }[] }>('GET', `/claims/${dup.id}`);
-    expect(detail.policyResults.some((r) => r.flag === 'DUPLICATE')).toBeTruthy();
+    // Backend detail: policy results live on each line.
+    const detail = await a.json<{ lines: { policyResults: { flag?: string }[] }[] }>('GET', `/claims/${dup.id}`);
+    expect(detail.lines.some((l) => l.policyResults.some((r) => r.flag === 'DUPLICATE'))).toBeTruthy();
 
     // Manager approves (> 25,000 adds the auditor step)
     await (await loginApi(request, manager)).approve(dup.id);
@@ -32,15 +33,20 @@ test.describe('Auditor and finance head journeys', () => {
   });
 
   test('TC-E2E-09 auditor bulk-approves 5; finance head creates a payout, downloads the CSV and marks it paid', async ({ browser, request }) => {
-    const { employee, manager, auditor, financeHead } = await cast(request);
-    const emp = await loginApi(request, employee);
-    const mgr = await loginApi(request, manager);
+    test.slow(); // five employees file and get approved via the API before the UI part starts
+    const { auditor, financeHead } = await cast(request, 9);
+    // The claims belong to five employees, so read their status as the finance head (sees all claims).
+    const fh = await loginApi(request, financeHead);
     const amount = uniqueAmount(26_000);
 
+    // Five different employees: five 26k claims from one person within a week would be a split suspect (BR-10a)
+    // and pick up a finance head step.
     const ids: number[] = [];
-    for (let i = 0; i < 5; i += 1) {
-      const c = await emp.createAndSubmit(`E2E bulk ${i}`, [{ category: 'OTHER', amount, receipt: true }]);
-      await mgr.approve(c.id);
+    const people = await employeesWithManagers(request, 5, 9);
+    for (const [i, p] of people.entries()) {
+      const owner = await loginApi(request, p.employee);
+      const c = await owner.createAndSubmit(`E2E bulk ${i}`, [{ category: 'OTHER', amount, receipt: true }]);
+      await (await loginApi(request, p.manager)).approve(c.id);
       ids.push(c.id);
     }
 
@@ -54,16 +60,16 @@ test.describe('Auditor and finance head journeys', () => {
     await audPage.getByTestId('bulk-approve').click();
     await audPage.getByTestId('bulk-confirm').click();
     await expect(audPage.getByTestId('bulk-result-summary')).toContainText('5 approved, 0 failed');
-    for (const id of ids) await expect.poll(async () => (await emp.getClaim(id)).status).toBe('APPROVED');
+    for (const id of ids) await expect.poll(async () => (await fh.getClaim(id)).status).toBe('APPROVED');
 
     // Finance head: batch → preview → CSV → paid
     const fhPage = await browser.newPage();
-    await signInAs(fhPage, await loginApi(request, financeHead));
+    await signInAs(fhPage, fh);
     await fhPage.goto('/payouts');
     await fhPage.getByTestId('new-batch').click();
-    for (const id of ids) await fhPage.getByTestId(`eligible-select-${id}`).check();
+    for (const id of ids) await fhPage.getByTestId(isNarrow(fhPage, 768) ? `m-eligible-select-${id}` : `eligible-select-${id}`).check();
     await expect(fhPage.getByTestId('preview-claims')).toContainText('5');
-    await expect(fhPage.getByTestId('preview-employees')).toContainText('1');
+    await expect(fhPage.getByTestId('preview-employees')).toContainText('5');
     await fhPage.getByTestId('create-batch').click();
     await expect(fhPage).toHaveURL(/\/payouts\/\d+$/);
     await expect(fhPage.getByTestId('mark-paid')).toBeDisabled();
@@ -81,6 +87,6 @@ test.describe('Auditor and finance head journeys', () => {
     await fhPage.getByTestId('mark-paid').click();
     await fhPage.getByTestId('mark-paid-confirm').click();
     await expect(fhPage.getByTestId('payout-status-PAID')).toBeVisible();
-    for (const id of ids) expect((await emp.getClaim(id)).status).toBe('PAID');
+    for (const id of ids) expect((await fh.getClaim(id)).status).toBe('PAID');
   });
 });

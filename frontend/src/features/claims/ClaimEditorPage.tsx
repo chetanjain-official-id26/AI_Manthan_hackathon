@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Paperclip, Pencil, Plus, Send } from 'lucide-react';
@@ -155,17 +155,24 @@ function Editor({ claim, onRefresh }: { claim: ClaimDetail; onRefresh: () => voi
   });
 
   const saveTitle = useMutation({
-    mutationFn: () => claimsApi.update(claim.id, title.trim(), claim.version),
+    mutationFn: () =>
+      claimsApi.update(claim.id, title.trim(), (qc.getQueryData<ClaimDetail>(qk.claim(claim.id)) ?? claim).version),
     onSuccess: (c) => {
       qc.setQueryData(qk.claim(claim.id), (old: ClaimDetail | undefined) => (old ? { ...old, title: c.title, version: c.version } : old));
       void qc.invalidateQueries({ queryKey: qk.claims });
     },
   });
 
+  /** In-flight blur save of the title, so submit can wait for it instead of racing it (both would PATCH with the same version → 409). */
+  const titleSaveInFlight = useRef<Promise<unknown> | null>(null);
+
   const submit = useMutation({
     mutationFn: async () => {
-      let version = claim.version;
-      if (title.trim() !== claim.title) {
+      // Clicking Submit blurs the title field, which starts a title save: let it finish, then use the newest version.
+      if (titleSaveInFlight.current) await titleSaveInFlight.current;
+      const latest = qc.getQueryData<ClaimDetail>(qk.claim(claim.id)) ?? claim;
+      let version = latest.version;
+      if (title.trim() !== latest.title) {
         const updated = await claimsApi.update(claim.id, title.trim(), version);
         version = updated.version;
       }
@@ -190,7 +197,10 @@ function Editor({ claim, onRefresh }: { claim: ClaimDetail; onRefresh: () => voi
       return;
     }
     setTitleError(null);
-    if (title.trim() !== claim.title) {
+    // Clicking the button blurs the title field, which may already be saving the title.
+    if (titleSaveInFlight.current) await titleSaveInFlight.current;
+    const latest = qc.getQueryData<ClaimDetail>(qk.claim(claim.id)) ?? claim;
+    if (title.trim() !== latest.title) {
       try {
         await saveTitle.mutateAsync();
       } catch (e) {
@@ -307,7 +317,13 @@ function Editor({ claim, onRefresh }: { claim: ClaimDetail; onRefresh: () => voi
                   }}
                   onBlur={() => {
                     if (title.trim() && title.trim() !== claim.title) {
-                      saveTitle.mutate(undefined, { onError: (e) => handleError(e, setTitleError) });
+                      const p = saveTitle
+                        .mutateAsync()
+                        .catch((e: unknown) => handleError(e, setTitleError))
+                        .finally(() => {
+                          if (titleSaveInFlight.current === p) titleSaveInFlight.current = null;
+                        });
+                      titleSaveInFlight.current = p;
                     }
                   }}
                   data-testid="claim-title"

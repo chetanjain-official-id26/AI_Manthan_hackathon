@@ -112,9 +112,9 @@ function BatchDetail({ batch, onRefresh }: { batch: PayoutBatch; onRefresh: () =
     },
   });
 
-  const canExport = batch.status === 'DRAFT' || batch.status === 'EXPORTED';
+  const canExport = batch.status === 'CREATED' || batch.status === 'EXPORTED';
   const canPay = batch.status === 'EXPORTED';
-  const canVoid = batch.status === 'DRAFT' || batch.status === 'EXPORTED';
+  const canVoid = batch.status === 'CREATED' || batch.status === 'EXPORTED';
 
   return (
     <div className="space-y-4">
@@ -135,7 +135,7 @@ function BatchDetail({ batch, onRefresh }: { batch: PayoutBatch; onRefresh: () =
               {batch.status === 'EXPORTED' ? 'Download CSV again' : 'Export CSV'}
             </Button>
           )}
-          {batch.status !== 'PAID' && batch.status !== 'VOID' && (
+          {batch.status !== 'PAID' && batch.status !== 'VOIDED' && (
             <Button
               variant="success"
               icon={<BadgeCheck className="h-4 w-4" aria-hidden />}
@@ -176,8 +176,8 @@ function BatchDetail({ batch, onRefresh }: { batch: PayoutBatch; onRefresh: () =
           {actionError}
         </Banner>
       )}
-      {batch.status === 'DRAFT' && <Banner tone="info">Export the CSV and upload it to the bank, then mark the batch paid.</Banner>}
-      {batch.status === 'VOID' && (
+      {batch.status === 'CREATED' && <Banner tone="info">Export the CSV and upload it to the bank, then mark the batch paid.</Banner>}
+      {batch.status === 'VOIDED' && (
         <Banner tone="warning" title="Voided">
           {batch.voidReason ?? 'This batch was voided. Its claims returned to Approved.'}
         </Banner>

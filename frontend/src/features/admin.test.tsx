@@ -151,7 +151,7 @@ describe('S8 policy rules (EF-014, EF-041, R7)', () => {
     expect(screen.getByTestId('policy-reason-error')).toHaveTextContent(/reason is required/);
     await userEvent.type(screen.getByTestId('policy-reason'), 'demo');
     await userEvent.click(screen.getByTestId('policy-edit-save'));
-    await waitFor(() => expect(body).toMatchObject({ limitAmount: '2000', action: 'ROUTE', active: true, reason: 'demo', category: 'MEAL', cityTier: null }));
+    await waitFor(() => expect(body).toMatchObject({ limitAmount: '2000', action: 'ROUTE', enabled: true, reason: 'demo', category: 'MEAL', cityTier: null }));
     expect(String(body?.effectiveFrom)).toMatch(/\+05:30$/);
   });
 

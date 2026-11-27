@@ -52,7 +52,7 @@ export function seed(now = Date.now()): MockDb {
 
   // ---------- policy rules (v1 180 days ago; tier-1 hotel revised 40 days ago) ----------
   const ruleStart = now - 180 * DAY;
-  const seedRules: [string, Category | null, CityTier | null, string | null, 'PER_DAY' | 'PER_NIGHT' | 'PER_TRIP' | 'PER_LINE' | 'NONE', 'ROUTE' | 'AUTO_REJECT', 'OVER_LIMIT' | 'RECEIPT' | 'DUPLICATE' | 'WEEKEND' | 'STALE_EXPENSE'][] = [
+  const seedRules: [string, Category | null, CityTier | null, string | null, 'PER_DAY' | 'PER_NIGHT' | 'PER_TRIP' | 'PER_LINE' | 'NONE', 'ROUTE' | 'AUTO_REJECT', 'OVER_LIMIT' | 'RECEIPT' | 'DUPLICATE' | 'WEEKEND' | 'STALE'][] = [
     ['MEAL_DAILY_LIMIT', 'MEAL', null, '1500.00', 'PER_DAY', 'ROUTE', 'OVER_LIMIT'],
     ['HOTEL_NIGHTLY_LIMIT', 'HOTEL', 'TIER_1', '5500.00', 'PER_NIGHT', 'ROUTE', 'OVER_LIMIT'],
     ['HOTEL_NIGHTLY_LIMIT', 'HOTEL', 'OTHER', '4000.00', 'PER_NIGHT', 'ROUTE', 'OVER_LIMIT'],
@@ -61,7 +61,7 @@ export function seed(now = Date.now()): MockDb {
     ['DUPLICATE_VENDOR_AMOUNT_DATE', null, null, null, 'NONE', 'ROUTE', 'DUPLICATE'],
     ['DUPLICATE_RECEIPT_HASH', null, null, null, 'NONE', 'ROUTE', 'DUPLICATE'],
     ['WEEKEND_SPEND', null, null, null, 'NONE', 'ROUTE', 'WEEKEND'],
-    ['STALE_EXPENSE', null, null, null, 'NONE', 'ROUTE', 'STALE_EXPENSE'],
+    ['STALE_EXPENSE', null, null, null, 'NONE', 'ROUTE', 'STALE'],
   ];
   for (const [ruleCode, category, cityTier, limitAmount, unit, action, flag] of seedRules) {
     db.addRuleVersion(

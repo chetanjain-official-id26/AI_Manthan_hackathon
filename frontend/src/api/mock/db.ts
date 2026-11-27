@@ -621,7 +621,7 @@ export class MockDb {
 
   // ---------- payouts ----------
   activeBatchOf(claimId: number): MBatch | undefined {
-    return this.batches.find((b) => b.status !== 'VOID' && b.items.some((i) => i.claimId === claimId));
+    return this.batches.find((b) => b.status !== 'VOIDED' && b.items.some((i) => i.claimId === claimId));
   }
   createBatch(actor: MUser, claimIds: number[], at: number): MBatch {
     if (claimIds.length === 0) throw new MockError(422, 'Select at least one claim', [{ field: 'claimIds', message: 'Select at least one claim' }]);
@@ -634,7 +634,7 @@ export class MockDb {
     const b: MBatch = {
       id,
       batchNo: `B${id}`,
-      status: 'DRAFT',
+      status: 'CREATED',
       createdAt: at,
       createdById: actor.id,
       exportedAt: null,
@@ -682,9 +682,9 @@ export class MockDb {
     return { name: `EXPF_${ymd}_${b.id}.csv`, text: `${rows.join('\n')}\n` };
   }
   exportBatch(actor: MUser, b: MBatch, at: number): { name: string; text: string } {
-    if (b.status === 'VOID') throw new MockError(422, 'A void batch cannot be exported');
+    if (b.status === 'VOIDED') throw new MockError(422, 'A void batch cannot be exported');
     const csv = this.batchCsv(b, b.exportedAt ?? at);
-    if (b.status === 'DRAFT') {
+    if (b.status === 'CREATED') {
       b.status = 'EXPORTED';
       b.exportedAt = at;
       b.fileName = csv.name;
@@ -710,9 +710,9 @@ export class MockDb {
   }
   voidBatch(actor: MUser, b: MBatch, reason: string, at: number): void {
     if (b.status === 'PAID') throw new MockError(422, 'A paid batch cannot be voided');
-    if (b.status === 'VOID') throw new MockError(422, 'This batch is already void');
+    if (b.status === 'VOIDED') throw new MockError(422, 'This batch is already void');
     if (!reason.trim()) throw new MockError(422, 'A reason is required', [{ field: 'reason', message: 'A reason is required' }]);
-    b.status = 'VOID';
+    b.status = 'VOIDED';
     b.voidReason = reason.trim();
     b.version += 1;
     for (const it of b.items) {

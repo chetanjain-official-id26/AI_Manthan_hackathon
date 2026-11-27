@@ -276,7 +276,8 @@ function EditRuleModal({ state, onClose, onBlocked }: { state: NonNullable<EditS
 
   const [limit, setLimit] = useState(base.limitAmount != null ? String(base.limitAmount) : '');
   const [action, setAction] = useState<PolicyOutcome>(base.action);
-  const [active, setActive] = useState(state.rollbackFrom ? true : base.active);
+  // Backend: `enabled` = rule on/off; `active` = this is the current version.
+  const [active, setActive] = useState(state.rollbackFrom ? true : (base.enabled ?? base.active));
   const [effective, setEffective] = useState(nowISTLocalInput());
   const [reason, setReason] = useState(state.rollbackFrom ? `Roll back to v${state.rollbackFrom.version}: ` : '');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -319,7 +320,7 @@ function EditRuleModal({ state, onClose, onBlocked }: { state: NonNullable<EditS
     save.mutate({
       limitAmount: hasLimit ? limit.trim() : null,
       action,
-      active,
+      enabled: active,
       effectiveFrom: localInputToISTInstant(effective),
       reason: reason.trim(),
       category: state.slot.current.category ?? null,

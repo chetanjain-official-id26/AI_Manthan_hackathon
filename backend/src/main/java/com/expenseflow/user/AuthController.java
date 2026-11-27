@@ -48,7 +48,7 @@ public class AuthController {
         this.demoEnabled = demoEnabled;
     }
 
-    public record DemoUser(Long id, String empCode, String name, Set<Role> roles, String department) {
+    public record DemoUser(Long id, String empCode, String name, Set<Role> roles, String department, Long managerId) {
     }
 
     public record LoginRequest(@NotNull Long employeeId) {
@@ -107,7 +107,7 @@ public class AuthController {
     }
 
     private DemoUser demoUser(Employee e) {
-        return new DemoUser(e.getId(), e.getEmpCode(), e.getName(), e.roleSet(), deptCode(e));
+        return new DemoUser(e.getId(), e.getEmpCode(), e.getName(), e.roleSet(), deptCode(e), e.getManagerId());
     }
 
     private String deptCode(Employee e) {

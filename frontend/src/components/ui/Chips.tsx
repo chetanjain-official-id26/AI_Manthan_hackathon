@@ -59,7 +59,7 @@ const FLAG_ICON: Record<Flag, LucideIcon> = {
   RECEIPT: Receipt,
   SAMPLE: Dice5,
   SPLIT_SUSPECT: Scissors,
-  STALE_EXPENSE: Hourglass,
+  STALE: Hourglass,
 };
 
 const FLAG_TONE: Record<Flag, string> = {
@@ -69,7 +69,7 @@ const FLAG_TONE: Record<Flag, string> = {
   RECEIPT: 'bg-red-50 text-red-800 border-red-200',
   SAMPLE: 'bg-violet-50 text-violet-800 border-violet-200',
   SPLIT_SUSPECT: 'bg-orange-50 text-orange-800 border-orange-200',
-  STALE_EXPENSE: 'bg-stone-100 text-stone-800 border-stone-300',
+  STALE: 'bg-stone-100 text-stone-800 border-stone-300',
 };
 
 export function FlagChip({ flag, detail, className }: { flag: Flag; detail?: string; className?: string }) {
@@ -114,14 +114,14 @@ export function OutcomeBadge({ outcome, compact = false }: { outcome: PolicyOutc
 }
 
 const PAYOUT: Record<PayoutStatus, { tone: string; Icon: LucideIcon }> = {
-  DRAFT: { tone: 'bg-slate-50 text-slate-700 border-slate-200', Icon: Circle },
+  CREATED: { tone: 'bg-slate-50 text-slate-700 border-slate-200', Icon: Circle },
   EXPORTED: { tone: 'bg-blue-50 text-blue-800 border-blue-200', Icon: Send },
   PAID: { tone: 'bg-emerald-100 text-emerald-900 border-emerald-300', Icon: BadgeCheck },
-  VOID: { tone: 'bg-red-50 text-red-800 border-red-200', Icon: Ban },
+  VOIDED: { tone: 'bg-red-50 text-red-800 border-red-200', Icon: Ban },
 };
 
 export function PayoutStatusChip({ status }: { status: PayoutStatus }) {
-  const p = PAYOUT[status];
+  const p = PAYOUT[status] ?? PAYOUT.CREATED;
   return (
     <span className={cn(base, p.tone)} data-testid={`payout-status-${status}`}>
       <p.Icon className="h-3 w-3" aria-hidden />

@@ -111,7 +111,8 @@ public class ClaimController {
 
     @PostMapping("/claims/{id}/policy-preview")
     public PreviewView preview(@PathVariable Long id) {
-        return query.preview(service.preview(id, CurrentUser.get()));
+        CurrentUser user = CurrentUser.get();
+        return query.preview(service.preview(id, user), user);
     }
 
     @PostMapping("/claims/{id}/submit")

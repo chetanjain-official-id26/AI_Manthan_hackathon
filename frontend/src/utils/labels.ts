@@ -51,10 +51,10 @@ export const OUTCOME_LABEL: Record<PolicyOutcome, string> = {
 };
 
 export const PAYOUT_STATUS_LABEL: Record<PayoutStatus, string> = {
-  DRAFT: 'Draft',
+  CREATED: 'Draft',
   EXPORTED: 'Exported',
   PAID: 'Paid',
-  VOID: 'Void',
+  VOIDED: 'Void',
 };
 
 export const FLAG_LABEL: Record<Flag, string> = {
@@ -64,7 +64,7 @@ export const FLAG_LABEL: Record<Flag, string> = {
   RECEIPT: 'Receipt',
   SAMPLE: 'Sample',
   SPLIT_SUSPECT: 'Split suspect',
-  STALE_EXPENSE: 'Stale expense',
+  STALE: 'Stale expense',
 };
 
 export const FLAG_DESCRIPTION: Record<Flag, string> = {
@@ -74,7 +74,7 @@ export const FLAG_DESCRIPTION: Record<Flag, string> = {
   RECEIPT: 'A receipt is required for this amount',
   SAMPLE: 'Picked at random for the 10% sample audit',
   SPLIT_SUSPECT: 'Combined with recent claims, this crosses an approval threshold',
-  STALE_EXPENSE: 'Expense date is more than 90 days before submission',
+  STALE: 'Expense date is more than 90 days before submission',
 };
 
 export const FLAGS_FILTERABLE: readonly Flag[] = ['DUPLICATE', 'WEEKEND', 'OVER_LIMIT', 'SPLIT_SUSPECT'];
@@ -106,8 +106,11 @@ const UNIT_SUFFIX: Record<string, string> = {
  * e.g. "Meal daily limit: ₹1,800.00 / ₹1,500.00 per day".
  */
 export function explainResult(r: PolicyResult): string {
-  if (r.reason && !/^[A-Z_]+$/.test(r.reason)) return r.reason;
   const label = ruleLabel(r.ruleCode);
+  // Backend reasons look like "OVER_LIMIT: cab trip 2500.00 over 2000.00"; show the friendly rule label instead of the code.
+  const coded = r.reason ? /^[A-Z_]+:\s*(.+)$/.exec(r.reason) : null;
+  if (coded?.[1]) return `${label}: ${coded[1]}`;
+  if (r.reason && !/^[A-Z_]+$/.test(r.reason)) return r.reason;
   if (r.ruleCode === 'RECEIPT_REQUIRED') {
     return `Receipt required above ${formatINR(r.limitAmount ?? '500')}`;
   }

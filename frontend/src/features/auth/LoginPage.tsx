@@ -52,13 +52,16 @@ const AVATAR_TONES = ['bg-indigo-100 text-indigo-800', 'bg-emerald-100 text-emer
 
 type ApiState = 'checking' | 'connected' | 'offline' | 'demo';
 
+
 function StatusPill({ state }: { state: ApiState }) {
+  if (state === 'connected') return null;
+
   const cfg = {
     checking: { dot: 'bg-slate-400 animate-pulse', text: 'Checking API…', cls: 'border-white/10 bg-white/5 text-slate-300' },
-    connected: { dot: 'bg-emerald-400', text: 'API connected', cls: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200' },
     offline: { dot: 'bg-red-400', text: 'API unreachable', cls: 'border-red-400/20 bg-red-400/10 text-red-200' },
     demo: { dot: 'bg-amber-400', text: 'Demo mode · mock data', cls: 'border-amber-400/20 bg-amber-400/10 text-amber-200' },
   }[state];
+
   return (
     <span className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium', cfg.cls)} data-testid="api-status">
       <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} aria-hidden />

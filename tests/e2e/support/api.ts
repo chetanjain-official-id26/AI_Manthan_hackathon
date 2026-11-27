@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 /** Minimal shapes of the API used for test setup (mirrors frontend/src/api/types.ts). */
 export interface User {
@@ -58,6 +58,12 @@ export function uniqueAmount(base: number): string {
 }
 
 // ---------- API client ----------
+type RawClaim = Claim | { claim: Omit<Claim, 'lines'>; lines: { id: number }[] };
+/** The backend nests claim details as `{claim, lines, …}`; flatten to the minimal Claim shape. */
+const flat = (raw: RawClaim): Claim => ('claim' in raw ? { ...raw.claim, lines: raw.lines } : raw);
+/** Line add returns the whole claim; the new line is the one with the highest id. */
+const newestLineId = (raw: RawClaim): number => Math.max(...flat(raw).lines.map((l) => l.id));
+
 export class Api {
   constructor(
     private readonly request: APIRequestContext,
@@ -76,16 +82,16 @@ export class Api {
     return (text ? JSON.parse(text) : undefined) as T;
   }
 
-  getClaim(id: number) {
-    return this.json<Claim>('GET', `/claims/${id}`);
+  async getClaim(id: number): Promise<Claim> {
+    return flat(await this.json<RawClaim>('GET', `/claims/${id}`));
   }
 
   async createClaim(title: string, lines: LineSpec[]): Promise<Claim> {
-    const claim = await this.json<Claim>('POST', '/claims', { title });
+    const claim = flat(await this.json<RawClaim>('POST', '/claims', { title }));
     let i = 0;
     for (const l of lines) {
       i += 1;
-      const line = await this.json<{ id: number }>('POST', `/claims/${claim.id}/lines`, {
+      const saved = await this.json<RawClaim>('POST', `/claims/${claim.id}/lines`, {
         category: l.category,
         amount: l.amount,
         expenseDate: l.expenseDate ?? weekday(i),
@@ -95,6 +101,7 @@ export class Api {
         nights: l.category === 'HOTEL' ? (l.nights ?? 1) : null,
         description: l.description ?? 'E2E',
       });
+      const line = { id: newestLineId(saved) };
       if (l.receipt) {
         const bytes = Buffer.isBuffer(l.receipt) ? l.receipt : uniquePng();
         const res = await this.request.post(`/api/claims/${claim.id}/lines/${line.id}/receipt`, {
@@ -109,7 +116,7 @@ export class Api {
 
   async submit(id: number): Promise<Claim> {
     const c = await this.getClaim(id);
-    return this.json<Claim>('POST', `/claims/${id}/submit`, { version: c.version });
+    return flat(await this.json<RawClaim>('POST', `/claims/${id}/submit`, { version: c.version }));
   }
 
   async createAndSubmit(title: string, lines: LineSpec[]): Promise<Claim> {
@@ -119,7 +126,7 @@ export class Api {
 
   async approve(id: number): Promise<Claim> {
     const c = await this.getClaim(id);
-    return this.json<Claim>('POST', `/claims/${id}/approve`, { version: c.version });
+    return flat(await this.json<RawClaim>('POST', `/claims/${id}/approve`, { version: c.version }));
   }
 }
 
@@ -147,11 +154,26 @@ export interface Cast {
   financeHead: User;
 }
 
-export async function cast(request: APIRequestContext): Promise<Cast> {
+/**
+ * Employees whose manager holds the MANAGER role, in seed order.
+ * BR-10a (claim splitting) sums an employee's claims over a rolling window, so tests that expect a
+ * specific approval chain must not pile claims onto one employee: each test takes its own `slot`.
+ */
+async function eligibleEmployees(request: APIRequestContext) {
   const all = await users(request);
   const byId = new Map(all.map((u) => [u.id, u]));
   const plain = all.filter((u) => primaryRole(u) === 'EMPLOYEE');
-  const employee = plain.find((u) => u.managerId && primaryRole(byId.get(u.managerId) ?? u) === 'MANAGER');
+  const withManager = plain.filter((u) => u.managerId && primaryRole(byId.get(u.managerId) ?? u) === 'MANAGER');
+  return { all, byId, plain, withManager };
+}
+
+/** Each Playwright project gets its own block of employees, so desktop and mobile runs never share history. */
+const PROJECT_SLOT_OFFSET: Record<string, number> = { desktop: 0, 'mobile-360': 20 };
+const projectOffset = () => PROJECT_SLOT_OFFSET[test.info().project.name] ?? 40;
+
+export async function cast(request: APIRequestContext, slot = 0): Promise<Cast> {
+  const { all, byId, plain, withManager } = await eligibleEmployees(request);
+  const employee = withManager[(slot + projectOffset()) % Math.max(1, withManager.length)];
   if (!employee?.managerId) throw new Error('Seed has no employee with a MANAGER');
   const manager = byId.get(employee.managerId) as User;
   const colleague = plain.find((u) => u.id !== employee.id && u.managerId !== manager.id) ?? plain.find((u) => u.id !== employee.id);
@@ -160,6 +182,15 @@ export async function cast(request: APIRequestContext): Promise<Cast> {
   const financeHead = all.find((u) => primaryRole(u) === 'FINANCE_HEAD');
   if (!colleague || !otherEmployee || !auditor || !financeHead) throw new Error('Seed is missing personas');
   return { employee, manager, colleague, otherEmployee, auditor, financeHead };
+}
+
+/** `count` distinct employees (with their managers) starting at `fromSlot`. */
+export async function employeesWithManagers(request: APIRequestContext, count: number, fromSlot: number) {
+  const { byId, withManager } = await eligibleEmployees(request);
+  const start = fromSlot + projectOffset();
+  const picked = withManager.slice(start, start + count);
+  if (picked.length < count) throw new Error(`Seed has only ${withManager.length} employees with a MANAGER`);
+  return picked.map((employee) => ({ employee, manager: byId.get(employee.managerId as number) as User }));
 }
 
 // ---------- UI helpers ----------

@@ -644,7 +644,7 @@ on('POST', '/admin/policy-rules/([A-Z_]+)/versions', (ctx, [code]) => {
       action,
       flag: base.flag,
       params: base.params,
-      active: b.active !== false,
+      active: (b.enabled ?? b.active) !== false,
       effectiveFrom: str(b.effectiveFrom) || new Date(ctx.now).toISOString(),
       createdById: u.id,
       createdByName: u.name,

@@ -3,7 +3,7 @@ import { cast, isNarrow, loginApi, signInAs, signInUI, tid, uniquePng, weekday }
 
 test.describe('Employee journeys', () => {
   test('TC-E2E-01 employee creates a 3-line claim, saves a draft, submits; a small meal claim auto-approves', async ({ page, request }) => {
-    const { employee } = await cast(request);
+    const { employee } = await cast(request, 5);
     await signInUI(page, employee);
 
     // Draft with three lines
@@ -15,7 +15,9 @@ test.describe('Employee journeys', () => {
 
     const addLine = async (category: string, amount: string, vendor: string, withReceipt: boolean, date: string) => {
       const sheetOrPanel = page.getByTestId('line-form');
-      if (!(await sheetOrPanel.isVisible())) await page.getByTestId('add-line').click();
+      // On a new claim the mobile editor opens the line sheet by itself; give it a moment before deciding.
+      const open = await sheetOrPanel.waitFor({ state: 'visible', timeout: 1500 }).then(() => true, () => false);
+      if (!open) await page.getByTestId('add-line').click();
       await page.getByTestId('line-category').selectOption(category);
       await page.getByTestId('line-amount').fill(amount);
       await page.getByTestId('line-date').fill(date);
@@ -45,7 +47,7 @@ test.describe('Employee journeys', () => {
   });
 
   test('TC-E2E-02 a line above ₹500 without a receipt is auto-rejected with the reason shown', async ({ page, request }) => {
-    const { employee } = await cast(request);
+    const { employee } = await cast(request, 6);
     const api = await loginApi(request, employee);
     const claim = await api.createClaim('E2E parking', [{ category: 'OTHER', amount: '700', vendor: 'Parking', receipt: false }]);
     await signInAs(page, api);
@@ -63,7 +65,7 @@ test.describe('Employee journeys', () => {
   });
 
   test('TC-E2E-10 employee A opening employee B’s claim URL sees "Claim not found"', async ({ page, request }) => {
-    const { employee, otherEmployee } = await cast(request);
+    const { employee, otherEmployee } = await cast(request, 7);
     const b = await loginApi(request, otherEmployee);
     const claimB = await b.createClaim('E2E private', [{ category: 'MEAL', amount: '100' }]);
 

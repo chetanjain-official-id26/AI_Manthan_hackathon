@@ -1,3 +1,4 @@
+import { toClaimDetail, toClaimSummary, toSavedLine } from './adapters';
 import { request, requestPage } from './client';
 import type {
   ClaimDetail,
@@ -23,19 +24,25 @@ function linePayload(l: LineInput) {
 }
 
 export const claimsApi = {
-  list: (params: { mine?: boolean; status?: ClaimStatus | ''; page?: number }) =>
-    requestPage<ClaimSummary>('/claims', {
+  list: async (params: { mine?: boolean; status?: ClaimStatus | ''; page?: number }) => {
+    const page = await requestPage<ClaimSummary>('/claims', {
       query: { mine: params.mine ?? true, status: params.status ?? '', page: params.page ?? 0 },
-    }),
-  create: (title: string) => request<ClaimDetail>('/claims', { method: 'POST', body: { title } }),
-  get: (id: number) => request<ClaimDetail>(`/claims/${id}`),
-  update: (id: number, title: string, version: number) =>
-    request<ClaimDetail>(`/claims/${id}`, { method: 'PATCH', body: { title, version } }),
+    });
+    return { ...page, content: page.content.map(toClaimSummary) };
+  },
+  create: (title: string): Promise<ClaimDetail> =>
+    request<unknown>('/claims', { method: 'POST', body: { title } }).then(toClaimDetail),
+  get: (id: number): Promise<ClaimDetail> => request<unknown>(`/claims/${id}`).then(toClaimDetail),
+  update: (id: number, title: string, version: number): Promise<ClaimDetail> =>
+    request<unknown>(`/claims/${id}`, { method: 'PATCH', body: { title, version } }).then(toClaimDetail),
 
-  addLine: (id: number, line: LineInput) =>
-    request<ClaimLine>(`/claims/${id}/lines`, { method: 'POST', body: linePayload(line) }),
-  updateLine: (id: number, lineId: number, line: LineInput) =>
-    request<ClaimLine>(`/claims/${id}/lines/${lineId}`, { method: 'PUT', body: linePayload(line) }),
+  // The backend returns the whole claim after a line save; pick out the saved line.
+  addLine: (id: number, line: LineInput): Promise<ClaimLine> =>
+    request<unknown>(`/claims/${id}/lines`, { method: 'POST', body: linePayload(line) }).then((r) => toSavedLine(r)),
+  updateLine: (id: number, lineId: number, line: LineInput): Promise<ClaimLine> =>
+    request<unknown>(`/claims/${id}/lines/${lineId}`, { method: 'PUT', body: linePayload(line) }).then((r) =>
+      toSavedLine(r, lineId),
+    ),
   deleteLine: (id: number, lineId: number) => request<void>(`/claims/${id}/lines/${lineId}`, { method: 'DELETE' }),
 
   uploadReceipt: (id: number, lineId: number, file: File) => {
@@ -46,15 +53,17 @@ export const claimsApi = {
 
   policyPreview: (id: number, signal?: AbortSignal) =>
     request<PolicyPreviewResponse>(`/claims/${id}/policy-preview`, { method: 'POST', signal }),
-  submit: (id: number, version: number) =>
-    request<ClaimDetail>(`/claims/${id}/submit`, { method: 'POST', body: { version } }),
+  submit: (id: number, version: number): Promise<ClaimDetail> =>
+    request<unknown>(`/claims/${id}/submit`, { method: 'POST', body: { version } }).then(toClaimDetail),
 
-  approve: (id: number, version: number, note?: string) =>
-    request<ClaimDetail>(`/claims/${id}/approve`, { method: 'POST', body: note ? { version, note } : { version } }),
-  reject: (id: number, version: number, reason: string) =>
-    request<ClaimDetail>(`/claims/${id}/reject`, { method: 'POST', body: { version, reason } }),
-  sendBack: (id: number, version: number, comment: string) =>
-    request<ClaimDetail>(`/claims/${id}/send-back`, { method: 'POST', body: { version, comment } }),
+  approve: (id: number, version: number, note?: string): Promise<ClaimDetail> =>
+    request<unknown>(`/claims/${id}/approve`, { method: 'POST', body: note ? { version, note } : { version } }).then(
+      toClaimDetail,
+    ),
+  reject: (id: number, version: number, reason: string): Promise<ClaimDetail> =>
+    request<unknown>(`/claims/${id}/reject`, { method: 'POST', body: { version, reason } }).then(toClaimDetail),
+  sendBack: (id: number, version: number, comment: string): Promise<ClaimDetail> =>
+    request<unknown>(`/claims/${id}/send-back`, { method: 'POST', body: { version, comment } }).then(toClaimDetail),
   comment: (id: number, body: string) => request<unknown>(`/claims/${id}/comments`, { method: 'POST', body: { body } }),
 };
 

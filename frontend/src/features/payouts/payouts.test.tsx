@@ -69,7 +69,7 @@ describe('S5 payouts (EF-026..028, EF-042)', () => {
   it('TC-FE-PY05 (EF-028) Mark paid is disabled until exported; export downloads the CSV', async () => {
     let exported = false;
     server.use(
-      http.get(api('/payouts/12'), () => ok(batch({ status: exported ? 'EXPORTED' : 'DRAFT', fileName: exported ? 'EXPF_20261127_12.csv' : null }))),
+      http.get(api('/payouts/12'), () => ok(batch({ status: exported ? 'EXPORTED' : 'CREATED', fileName: exported ? 'EXPF_20261127_12.csv' : null }))),
       http.get(api('/payouts/12/csv'), () => {
         exported = true;
         return new HttpResponse('H,12\n', { headers: { 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="EXPF_20261127_12.csv"' } });
@@ -102,10 +102,10 @@ describe('S5 payouts (EF-026..028, EF-042)', () => {
   it('TC-FE-PY07 (EF-042) void needs a reason; a paid batch cannot be voided', async () => {
     let body: unknown;
     server.use(
-      http.get(api('/payouts/12'), () => ok(batch({ status: 'DRAFT' }))),
+      http.get(api('/payouts/12'), () => ok(batch({ status: 'CREATED' }))),
       http.post(api('/payouts/12/void'), async ({ request }) => {
         body = await request.json();
-        return ok(batch({ status: 'VOID' }));
+        return ok(batch({ status: 'VOIDED' }));
       }),
     );
     const { unmount } = renderApp('/payouts/12', { me: FINANCE_HEAD });

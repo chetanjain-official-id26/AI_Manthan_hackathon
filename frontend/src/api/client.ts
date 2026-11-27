@@ -283,12 +283,15 @@ export function toPage<T>(raw: PagedModelShape<T> | T[] | null | undefined): Pag
       totalPages: raw.page.totalPages ?? 1,
     };
   }
+  const size = raw.size ?? content.length;
+  const totalElements = raw.totalElements ?? content.length;
   return {
     content,
     page: raw.number ?? (typeof raw.page === 'number' ? raw.page : 0),
-    size: raw.size ?? content.length,
-    totalElements: raw.totalElements ?? content.length,
-    totalPages: raw.totalPages ?? 1,
+    size,
+    totalElements,
+    // Some endpoints (e.g. the auditor queue) omit totalPages; derive it so paging still works.
+    totalPages: raw.totalPages ?? (size > 0 ? Math.max(1, Math.ceil(totalElements / size)) : 1),
   };
 }
 

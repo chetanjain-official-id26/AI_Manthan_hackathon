@@ -23,7 +23,7 @@ describe('S4 auditor queue (EF-023..025)', () => {
     );
     renderApp('/auditor', { me: AUDITOR });
     await screen.findByTestId('queue-table');
-    expect(urls[0]?.searchParams.get('sort')).toBe('-age');
+    expect(urls[0]?.searchParams.get('sort')).toBe('AGE');
     await userEvent.selectOptions(screen.getByTestId('filter-flag'), 'DUPLICATE');
     await waitFor(() => expect(urls.at(-1)?.searchParams.get('flag')).toBe('DUPLICATE'));
     await userEvent.click(screen.getByTestId('filter-sample'));

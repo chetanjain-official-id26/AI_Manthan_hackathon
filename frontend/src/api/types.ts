@@ -49,7 +49,7 @@ export type Flag =
   | 'RECEIPT'
   | 'SAMPLE'
   | 'SPLIT_SUSPECT'
-  | 'STALE_EXPENSE';
+  | 'STALE';
 
 export type ApprovalLevel = 'MANAGER' | 'AUDITOR' | 'FINANCE_HEAD';
 export type StepStatus = 'WAITING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SENT_BACK' | 'CANCELLED';
@@ -310,7 +310,7 @@ export interface BulkApproveResult {
 }
 
 // ---------- Payouts ----------
-export type PayoutStatus = 'DRAFT' | 'EXPORTED' | 'PAID' | 'VOID';
+export type PayoutStatus = 'CREATED' | 'EXPORTED' | 'PAID' | 'VOIDED';
 
 export interface PayoutItem {
   id?: number;
@@ -395,8 +395,12 @@ export interface PolicyRule {
   unit: RuleUnit;
   action: PolicyOutcome;
   flag?: Flag | null;
-  params?: Record<string, unknown> | null;
+  /** The backend sends params as a JSON string; the mock sends an object. */
+  params?: Record<string, unknown> | string | null;
+  /** True when this row is the current version. */
   active: boolean;
+  /** Rule switched on/off (backend). */
+  enabled?: boolean;
   version: number;
   effectiveFrom: string;
   createdByName?: string | null;
@@ -407,7 +411,7 @@ export interface PolicyRule {
 export interface PolicyRuleVersionInput {
   limitAmount: string | null;
   action: PolicyOutcome;
-  active: boolean;
+  enabled: boolean;
   effectiveFrom: string;
   reason: string;
   category?: Category | null;

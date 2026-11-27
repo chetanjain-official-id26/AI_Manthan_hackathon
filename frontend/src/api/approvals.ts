@@ -1,8 +1,10 @@
+import { toInboxItem } from './adapters';
 import { request, requestList } from './client';
 import type { Delegation, InboxItem } from './types';
 
 export const approvalsApi = {
-  inbox: () => requestList<InboxItem>('/approvals/inbox', { query: { sort: 'age' } }),
+  inbox: (): Promise<InboxItem[]> =>
+    requestList<unknown>('/approvals/inbox', { query: { sort: 'age' } }).then((l) => l.map(toInboxItem)),
 };
 
 export interface DelegationInput {

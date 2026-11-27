@@ -17,7 +17,7 @@ async function statusOf(api: Api, id: number) {
 
 test.describe('Approval chain thresholds (BR-06..BR-10)', () => {
   test('TC-E2E-03 an 18,000 claim needs the manager only → Approved', async ({ page, request }) => {
-    const { employee, manager } = await cast(request);
+    const { employee, manager } = await cast(request, 0);
     const emp = await loginApi(request, employee);
     const claim = await emp.createAndSubmit('E2E 18k', routed('18000.00'));
     expect(claim.status).toBe('PENDING_MANAGER');
@@ -33,7 +33,7 @@ test.describe('Approval chain thresholds (BR-06..BR-10)', () => {
   });
 
   test('TC-E2E-04 a 60,000 claim goes manager → auditor → Approved', async ({ browser, request }) => {
-    const { employee, manager, auditor } = await cast(request);
+    const { employee, manager, auditor } = await cast(request, 1);
     const emp = await loginApi(request, employee);
     const claim = await emp.createAndSubmit('E2E 60k', routed('60000.00'));
 
@@ -47,7 +47,7 @@ test.describe('Approval chain thresholds (BR-06..BR-10)', () => {
   });
 
   test('TC-E2E-05 a 1,20,000 claim goes manager → auditor → finance head → Approved', async ({ browser, request }) => {
-    const { employee, manager, auditor, financeHead } = await cast(request);
+    const { employee, manager, auditor, financeHead } = await cast(request, 2);
     const emp = await loginApi(request, employee);
     const claim = await emp.createAndSubmit('E2E 1.2L', routed('120000.00'));
 
@@ -65,7 +65,7 @@ test.describe('Approval chain thresholds (BR-06..BR-10)', () => {
   });
 
   test('TC-E2E-06 manager sends back; employee edits and resubmits; the chain restarts', async ({ browser, request }) => {
-    const { employee, manager } = await cast(request);
+    const { employee, manager } = await cast(request, 3);
     const emp = await loginApi(request, employee);
     const claim = await emp.createAndSubmit('E2E send back', routed('18000.00'));
 
@@ -93,7 +93,7 @@ test.describe('Approval chain thresholds (BR-06..BR-10)', () => {
   });
 
   test('TC-E2E-07 manager on leave delegates; delegate approves; audit shows "on behalf of"', async ({ browser, request }) => {
-    const { employee, manager, colleague } = await cast(request);
+    const { employee, manager, colleague } = await cast(request, 4);
     const emp = await loginApi(request, employee);
     const mgr = await loginApi(request, manager);
     const claim = await emp.createAndSubmit('E2E delegated', routed('18000.00'));

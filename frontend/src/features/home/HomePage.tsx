@@ -264,7 +264,7 @@ function AuditorTasks() {
 function FinanceHeadTasks() {
   const eligible = useQuery({ queryKey: qk.eligible, queryFn: payoutsApi.eligible });
   const batches = useQuery({ queryKey: qk.payouts, queryFn: payoutsApi.list });
-  const open = (batches.data ?? []).filter((b) => b.status === 'DRAFT' || b.status === 'EXPORTED');
+  const open = (batches.data ?? []).filter((b) => b.status === 'CREATED' || b.status === 'EXPORTED');
   const eligibleTotal = sumMoney((eligible.data ?? []).map((c) => c.totalAmount));
 
   return (

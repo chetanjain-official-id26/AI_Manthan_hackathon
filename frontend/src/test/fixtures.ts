@@ -129,7 +129,7 @@ export function batch(over: Partial<PayoutBatch> = {}): PayoutBatch {
   return {
     id: 12,
     batchNo: 'B12',
-    status: 'DRAFT',
+    status: 'CREATED',
     claimCount: 3,
     employeeCount: 2,
     totalAmount: '48250.00',

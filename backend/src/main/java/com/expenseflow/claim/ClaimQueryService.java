@@ -143,7 +143,7 @@ public class ClaimQueryService {
         List<LineView> lines = c.getLines().stream().map(l -> new LineView(l.getId(), l.getCategory(), l.getAmount(),
                 l.getExpenseDate(), l.getVendor(), l.getCity(), l.getCityTier(), l.getNights(), l.getDescription(),
                 l.getLineOutcome(), receiptView(receiptByLine.get(l.getId())),
-                resultsByLine.getOrDefault(l.getId(), List.of()).stream().map(ClaimQueryService::resultView).toList()))
+                resultsByLine.getOrDefault(l.getId(), List.of()).stream().map(r -> resultView(r, user)).toList()))
                 .toList();
         List<StepView> stepViews = stepRows.stream().map(s -> new StepView(s.getId(), s.getSeq(), s.getLevel(),
                 s.getAssigneeId(), names.get(s.getAssigneeId()), s.getAssigneeRole(), s.getStatus(), s.getActedBy(),
@@ -162,11 +162,15 @@ public class ClaimQueryService {
         return new ClaimDetail(summary(c, names), lines, stepViews, commentViews, perms);
     }
 
-    public PreviewView preview(PolicyEvaluation ev) {
+    public PreviewView preview(PolicyEvaluation ev, CurrentUser user) {
         return new PreviewView(ev.claimOutcome(), ev.lineOutcomes().entrySet().stream()
                 .map(e -> new LinePreview(e.getKey(), e.getValue(), ev.hitsFor(e.getKey()).stream()
-                        .map(h -> new ResultView(h.ruleCode(), h.ruleVersion(), h.outcome(), h.flag(), h.reason(),
-                                h.relatedLineId())).toList()))
+                        .map(h -> {
+                            Claim match = visibleMatch(h.relatedLineId(), user);
+                            return new ResultView(h.ruleCode(), h.ruleVersion(), h.outcome(), h.flag(), h.reason(),
+                                    h.relatedLineId(), match == null ? null : match.getId(),
+                                    match == null ? null : match.getClaimNo());
+                        }).toList()))
                 .toList());
     }
 
@@ -195,9 +199,20 @@ public class ClaimQueryService {
                 : new ReceiptView(r.getId(), r.getOriginalName(), r.getContentType(), r.getSizeBytes(), r.getSha256());
     }
 
-    static ResultView resultView(PolicyResult r) {
+    ResultView resultView(PolicyResult r, CurrentUser user) {
+        Claim match = visibleMatch(r.getRelatedLineId(), user);
         return new ResultView(r.getRuleCode(), r.getRuleVersion(), r.getOutcome(), r.getFlag(), r.getReason(),
-                r.getRelatedLineId());
+                r.getRelatedLineId(), match == null ? null : match.getId(), match == null ? null : match.getClaimNo());
+    }
+
+    /** The claim holding a related (duplicate) line, or null when there is none or the caller may not see it (BR-26). */
+    private Claim visibleMatch(Long relatedLineId, CurrentUser user) {
+        if (relatedLineId == null) {
+            return null;
+        }
+        Long claimId = lines.findClaimIdByLineId(relatedLineId);
+        Claim c = claimId == null ? null : claims.findById(claimId).orElse(null);
+        return c != null && access.canView(user, c) ? c : null;
     }
 
     /** Receipt download is scoped exactly like the claim (R10). */
