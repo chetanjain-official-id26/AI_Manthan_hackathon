@@ -54,7 +54,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 @AutoConfigureMockMvc
 public abstract class IntegrationTest {
 
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(DockerImageName.parse("postgres:18"));
+    public static final PostgreSQLContainer POSTGRES =new PostgreSQLContainer(DockerImageName.parse("postgres:18"));
     private static final AtomicInteger SEQ = new AtomicInteger();
     private static final SecureRandom RND = new SecureRandom();
     private static volatile boolean configured;

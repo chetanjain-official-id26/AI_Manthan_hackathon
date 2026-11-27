@@ -14,21 +14,21 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Payout lifecycle (Test Plan Â§7.4). */
+/** Payout lifecycle (Test Plan §7.4). */
 class PayoutIT extends IntegrationTest {
 
     private List<Long> approvedClaims(int n) throws Exception {
         List<Long> ids = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             Employee e = emp("EMPLOYEE", null);
-            ids.add(submittedClaim(e, (1000 + i) + ".50")); // auto-approved (â‰¤ 5,000, no flags)
+            ids.add(submittedClaim(e, (1000 + i) + ".50")); // auto-approved (≤ 5,000, no flags)
         }
         ids.forEach(id -> assertThat(status(id)).isEqualTo("APPROVED"));
         return ids;
     }
 
     @Test
-    @DisplayName("TC-PAY-01 create batch from APPROVED â†’ claims IN_PAYOUT, totals correct")
+    @DisplayName("TC-PAY-01 create batch from APPROVED → claims IN_PAYOUT, totals correct")
     void createBatch() throws Exception {
         List<Long> ids = approvedClaims(3);
         String fh = token(emp("EMPLOYEE,FINANCE_HEAD", null));
@@ -47,8 +47,8 @@ class PayoutIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-PAY-02/03 export CSV (claims unchanged, re-export identical) then mark paid â†’ PAID; "
-            + "non-exported â†’ 422")
+    @DisplayName("TC-PAY-02/03 export CSV (claims unchanged, re-export identical) then mark paid → PAID; "
+            + "non-exported → 422")
     void exportAndPay() throws Exception {
         List<Long> ids = approvedClaims(2);
         String fh = token(emp("EMPLOYEE,FINANCE_HEAD", null));
@@ -81,7 +81,7 @@ class PayoutIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-PAY-04 a claim cannot be in two batches â†’ 409 (R14)")
+    @DisplayName("TC-PAY-04 a claim cannot be in two batches → 409 (R14)")
     void twoBatches() throws Exception {
         List<Long> ids = approvedClaims(2);
         String fh = token(emp("EMPLOYEE,FINANCE_HEAD", null));
@@ -92,7 +92,7 @@ class PayoutIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-PAY-06 void an unpaid batch â†’ claims back to APPROVED and can be batched again; void on PAID â†’ 422")
+    @DisplayName("TC-PAY-06 void an unpaid batch → claims back to APPROVED and can be batched again; void on PAID → 422")
     void voidBatch() throws Exception {
         List<Long> ids = approvedClaims(2);
         String fh = token(emp("EMPLOYEE,FINANCE_HEAD", null));

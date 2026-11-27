@@ -24,7 +24,7 @@ import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Approval chain and delegation (Test Plan Â§7.2) plus approval security cases (Â§7.7). */
+/** Approval chain and delegation (Test Plan §7.2) plus approval security cases (§7.7). */
 class ApprovalFlowIT extends IntegrationTest {
 
     @Autowired
@@ -70,7 +70,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-APR-02 total 25,000.00 â†’ manager only â†’ APPROVED")
+    @DisplayName("TC-APR-02 total 25,000.00 → manager only → APPROVED")
     void exactly25k() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "25000.00");
@@ -81,7 +81,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-APR-03 total 25,000.01 â†’ manager approve â†’ PENDING_AUDITOR")
+    @DisplayName("TC-APR-03 total 25,000.01 → manager approve → PENDING_AUDITOR")
     void above25k() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "25000.01");
@@ -93,7 +93,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-APR-04 total 1,00,000.00 â†’ manager â†’ auditor â†’ APPROVED (no finance head)")
+    @DisplayName("TC-APR-04 total 1,00,000.00 → manager → auditor → APPROVED (no finance head)")
     void exactly1L() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "100000.00");
@@ -104,7 +104,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-APR-05 total 1,00,000.01 â†’ manager â†’ auditor â†’ PENDING_FINANCE_HEAD â†’ APPROVED")
+    @DisplayName("TC-APR-05 total 1,00,000.01 → manager → auditor → PENDING_FINANCE_HEAD → APPROVED")
     void above1L() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "100000.01");
@@ -118,7 +118,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-APR-06 reject needs a reason: '' â†’ 422, then with a reason â†’ REJECTED and audited")
+    @DisplayName("TC-APR-06 reject needs a reason: '' → 422, then with a reason → REJECTED and audited")
     void rejectNeedsReason() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "8000.00");
@@ -262,7 +262,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-SEC-01 claim splitting: 2 Ã— 20,000 within 7 days â†’ 2nd flagged SPLIT_SUSPECT with an auditor step")
+    @DisplayName("TC-SEC-01 claim splitting: 2 × 20,000 within 7 days → 2nd flagged SPLIT_SUSPECT with an auditor step")
     void claimSplitting() throws Exception {
         Org o = org();
         long first = submittedClaim(o.employee(), "20000.00");
@@ -275,7 +275,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-SEC-02 self-approval via delegation: the delegate's own claim â†’ 403, step unchanged (R2)")
+    @DisplayName("TC-SEC-02 self-approval via delegation: the delegate's own claim → 403, step unchanged (R2)")
     void selfApprovalViaDelegation() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "9000.00");
@@ -289,7 +289,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-SEC-03 delegation cycles Aâ†’Bâ†’A and Aâ†’Bâ†’Câ†’A are rejected (R3); self-delegation too")
+    @DisplayName("TC-SEC-03 delegation cycles A→B→A and A→B→C→A are rejected (R3); self-delegation too")
     void delegationCycles() throws Exception {
         Employee a = emp("EMPLOYEE,MANAGER", null);
         Employee b = emp("EMPLOYEE,MANAGER", null);
@@ -305,7 +305,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("BR-19 delegation does not chain: Aâ†’B and Bâ†’C does not let C act for A")
+    @DisplayName("BR-19 delegation does not chain: A→B and B→C does not let C act for A")
     void noChaining() throws Exception {
         Org o = org();
         Employee b = emp("EMPLOYEE,MANAGER", null);
@@ -319,7 +319,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("TC-SEC-06 approving via the API as a non-assignee â†’ 404 (cannot see) or 403 (can see) (R8)")
+    @DisplayName("TC-SEC-06 approving via the API as a non-assignee → 404 (cannot see) or 403 (can see) (R8)")
     void nonAssignee() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "9000.00");
@@ -357,7 +357,7 @@ class ApprovalFlowIT extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("Stale version on approve â†’ 409 (BR-28)")
+    @DisplayName("Stale version on approve → 409 (BR-28)")
     void staleApprove() throws Exception {
         Org o = org();
         long id = submittedClaim(o.employee(), "9000.00");

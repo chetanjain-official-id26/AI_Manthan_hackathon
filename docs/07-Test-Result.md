@@ -21,7 +21,9 @@
 
 Integration count includes 5 repetitions of the TC-SEC-07 concurrency test.
 
-**Coverage (JaCoCo):** line 76.9% · branch 59.1% (excluding the one-shot `seed` job: line 90.5% · branch 73.7%) · `policy` packages line 91.4% · `policy.engine` line 95.9%
+**Coverage (JaCoCo, all code incl. the seed job, 163 tests):** line 97.6% (2,216/2,271) · branch 89.3% (825/924) · instruction 98.0% (15,563/15,875) · method 97.3%. `./mvnw verify` fails if line, branch or instruction coverage drops below 80%. Report: `backend/target/site/jacoco/index.html`.
+
+Added for coverage: `SeedRunnerIT` (400-claim seed on its own database, idempotent re-run, incomplete-seed guard), `EdgeCasesIT` (17 API error paths and options), `EdgeCasesUnitTest` (19 guard branches).
 
 ## 2. Policy rule coverage matrix
 | Rule | Below | At | Above | Other | Status |

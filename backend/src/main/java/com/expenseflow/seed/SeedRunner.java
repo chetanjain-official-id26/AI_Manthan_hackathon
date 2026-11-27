@@ -52,7 +52,8 @@ import java.util.Set;
 /**
  * Synthetic seed (EF-036, EF-037). Runs only with the "seed" profile, drives the real services with
  * a pinned clock so every claim has genuine policy results, approval steps, audit rows and payouts.
- * Idempotent: if employees already exist it prints the summary and exits without adding anything.
+ * Idempotent: once a run has completed it prints the summary and exits without adding anything.
+ * Sizes are configurable (expenseflow.seed.employees / .claims) so tests can run a smaller seed.
  * All names, accounts and receipts are synthetic.
  */
 @Component
@@ -61,8 +62,9 @@ public class SeedRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SeedRunner.class);
 
-    static final int EMPLOYEES = 150;
-    static final int CLAIMS = 3000;
+    private final int employeeCount;
+    private final int claimCount;
+    private final boolean exitWhenDone;
     static final int PLANT_DUP_VENDOR = 40;
     static final int PLANT_DUP_HASH = 15;
     static final int PLANT_BREACH = 60;
@@ -102,7 +104,16 @@ public class SeedRunner implements ApplicationRunner {
     public SeedRunner(EmployeeRepository employees, DepartmentRepository departments, ClaimService claimService,
                       ClaimRepository claims, ApprovalService approvals, ApprovalStepRepository steps,
                       DelegationService delegations, PayoutService payouts, TransactionTemplate tx,
-                      JdbcTemplate jdbc, MutableClock clock, ConfigurableApplicationContext ctx) {
+                      JdbcTemplate jdbc, MutableClock clock, ConfigurableApplicationContext ctx,
+                      @org.springframework.beans.factory.annotation.Value("${expenseflow.seed.employees:150}") int employeeCount,
+                      @org.springframework.beans.factory.annotation.Value("${expenseflow.seed.claims:3000}") int claimCount,
+                      @org.springframework.beans.factory.annotation.Value("${expenseflow.seed.exit-when-done:true}") boolean exitWhenDone) {
+        if (employeeCount < 22) {
+            throw new IllegalArgumentException("expenseflow.seed.employees must be at least 22 (fixed demo roles)");
+        }
+        this.employeeCount = employeeCount;
+        this.claimCount = claimCount;
+        this.exitWhenDone = exitWhenDone;
         this.employees = employees;
         this.departments = departments;
         this.claimService = claimService;
@@ -119,6 +130,14 @@ public class SeedRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        int exit = execute();
+        if (exitWhenDone) {
+            System.exit(SpringApplication.exit(ctx, () -> exit));
+        }
+    }
+
+    /** Seeds (or reports existing data) and returns the process exit code: 0 = ok, 1 = failed. */
+    public int execute() {
         long started = System.currentTimeMillis();
         int code = 0;
         try {
@@ -140,8 +159,7 @@ public class SeedRunner implements ApplicationRunner {
         } finally {
             clock.reset();
         }
-        int exit = code;
-        System.exit(SpringApplication.exit(ctx, () -> exit));
+        return code;
     }
 
     // ------------------------------------------------------------------ people
@@ -154,7 +172,7 @@ public class SeedRunner implements ApplicationRunner {
         staff.forEach(e -> users.put(e.getId(), new CurrentUser(e.getId(), e.getName(), e.roleSet())));
 
         // A historical delegation (manager EMP0008 on leave ~2 months ago) gives "on behalf of" history,
-        // and an active one (EMP0006 Ã¢â€ â€™ EMP0007) is available for the live demo.
+        // and an active one (EMP0006 -> EMP0007) is available for the live demo.
         LocalDate today = Ist.date(now);
         createDelegation(byCode.get("EMP0008"), byCode.get("EMP0009"), today.minusDays(65), today.minusDays(52),
                 "Annual leave");
@@ -162,7 +180,7 @@ public class SeedRunner implements ApplicationRunner {
 
         List<Plant> plan = plantPlan();
         List<Instant> times = new ArrayList<>();
-        for (int i = 0; i < CLAIMS; i++) {
+        for (int i = 0; i < claimCount; i++) {
             // ~6% in the last 5 days so the inbox and auditor queue have live work in the demo
             int maxMinutes = rnd.nextInt(100) < 6 ? 60 * 24 * 5 : 60 * 24 * 360;
             times.add(now.minus(Duration.ofMinutes(90 + rnd.nextInt(maxMinutes))));
@@ -170,13 +188,13 @@ public class SeedRunner implements ApplicationRunner {
         Collections.sort(times);
         List<Employee> filers = staff.stream().filter(e -> !e.getEmpCode().equals("EMP0001") || rnd.nextBoolean()).toList();
         // Late plants need history (duplicates), so put them in the second half of the timeline.
-        for (int i = 0; i < CLAIMS; i++) {
+        for (int i = 0; i < claimCount; i++) {
             Employee owner = filers.get(rnd.nextInt(filers.size()));
             Plant p = plan.get(i);
             Instant at = times.get(i);
             tx.executeWithoutResult(s -> oneClaim(owner, p, at));
             if ((i + 1) % 500 == 0) {
-                log.info("Seed: {} / {} claims", i + 1, CLAIMS);
+                log.info("Seed: {} / {} claims", i + 1, claimCount);
             }
         }
         runPayouts(byCode.get("EMP0001"));
@@ -203,7 +221,7 @@ public class SeedRunner implements ApplicationRunner {
             managers.add(m);
             all.add(m);
         }
-        for (int i = 22; i <= EMPLOYEES; i++) {
+        for (int i = 22; i <= employeeCount; i++) {
             Employee mgr = managers.get(rnd.nextInt(managers.size()));
             all.add(person(i, "EMPLOYEE", departments.findById(mgr.getDepartmentId()).orElseThrow(), mgr));
         }
@@ -245,14 +263,14 @@ public class SeedRunner implements ApplicationRunner {
         addN(early, Plant.OVER_25K, PLANT_OVER_25K);
         addN(early, Plant.OVER_1L, PLANT_OVER_1L);
         addN(early, Plant.NO_RECEIPT, PLANT_NO_RECEIPT);
-        int half = CLAIMS / 2;
+        int half = claimCount / 2;
         List<Plant> first = new ArrayList<>(early.subList(0, early.size() / 2));
         while (first.size() < half) {
             first.add(Plant.NONE);
         }
         List<Plant> second = new ArrayList<>(early.subList(early.size() / 2, early.size()));
         second.addAll(late);
-        while (second.size() < CLAIMS - half) {
+        while (second.size() < claimCount - half) {
             second.add(Plant.NONE);
         }
         Collections.shuffle(first, rnd);
@@ -555,17 +573,17 @@ public class SeedRunner implements ApplicationRunner {
                 ================ ExpenseFlow seed summary (synthetic data) ================
                 Employees: %d    Claims: %d    Payout batches: %d    (%.1f s)
                 Claims by status: %s
-                Planted anomalies (planted Ã¢â€ â€™ lines/claims detected by the engine):
-                  duplicate vendor+amount+date  %3d Ã¢â€ â€™ %d
-                  duplicate receipt hash        %3d Ã¢â€ â€™ %d
-                  limit breaches (OVER_LIMIT)   %3d Ã¢â€ â€™ %d
-                  weekend spend                 %3d Ã¢â€ â€™ %d
-                  claims > 25,000               %3d Ã¢â€ â€™ %d
-                  claims > 1,00,000             %3d Ã¢â€ â€™ %d
+                Planted anomalies (planted -> lines/claims detected by the engine):
+                  duplicate vendor+amount+date  %3d -> %d
+                  duplicate receipt hash        %3d -> %d
+                  limit breaches (OVER_LIMIT)   %3d -> %d
+                  weekend spend                 %3d -> %d
+                  claims > 25,000               %3d -> %d
+                  claims > 1,00,000             %3d -> %d
                 Sample-audited claims: %d    Split suspects: %d
                 Demo users (pick on the login screen):
                 %s
-                  Active delegation: EMP0006 Ã¢â€ â€™ EMP0007 (today + 5 days)
+                  Active delegation: EMP0006 -> EMP0007 (today + 5 days)
                 ===========================================================================
                 """.formatted(emp, cl, batches, ms / 1000.0, byStatus,
                 PLANT_DUP_VENDOR, dupVendor, PLANT_DUP_HASH, dupHash, PLANT_BREACH, breach, PLANT_WEEKEND, weekend,
