@@ -87,7 +87,7 @@ public class PolicyAdminService {
         guardEditor(actorId, "POLICY_RULE", ruleCode);
         PolicyRule current = currentRow(ruleCode, req.category(), req.cityTier());
         PolicyRule source = ruleRepo.findHistory(ruleCode).stream()
-                .filter(r -> sameKey(r, req.category(), req.cityTier()) && r.getVersion() == req.toVersion())
+                .filter(r -> sameKey(r, current.getCategory(), current.getCityTier()) && r.getVersion() == req.toVersion())
                 .findFirst()
                 .orElseThrow(() -> ApiException.notFound("Rule version " + req.toVersion()));
         PolicyRule next = current.copyAsNextVersion();

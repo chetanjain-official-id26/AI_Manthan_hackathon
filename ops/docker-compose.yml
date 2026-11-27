@@ -1,0 +1,105 @@
+# ExpenseFlow one-command demo (EF-036):
+#   cp .env.example .env        (repo root; never commit .env)
+#   docker compose -f ops/docker-compose.yml up -d
+# Secrets come from ../.env via env_file, so nothing secret is written into this file. All data is synthetic.
+name: expenseflow
+
+x-backend: &backend-common
+  image: expenseflow-backend:local
+  env_file:
+    - path: ../.env
+      required: true
+  volumes:
+    - receipts:/data/receipts
+
+services:
+  db:
+    image: postgres:18
+    container_name: ef-db
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      TZ: Asia/Kolkata
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    <<: *backend-common
+    build: ../backend
+    container_name: ef-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/expenseflow
+    ports:
+      - "8080:8080"
+
+  # One-shot synthetic data job; idempotent (re-running adds nothing).
+  seed:
+    <<: *backend-common
+    container_name: ef-seed
+    restart: "no"
+    depends_on:
+      backend:
+        condition: service_healthy   # Flyway has migrated by then
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/expenseflow
+      SPRING_PROFILES_ACTIVE: seed
+
+  # The React app lives in ../frontend; enable with: --profile frontend
+  frontend:
+    build: ../frontend
+    container_name: ef-frontend
+    restart: unless-stopped
+    profiles: ["frontend"]
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: ef-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: ef-grafana
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: true
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  db-data:
+  receipts:

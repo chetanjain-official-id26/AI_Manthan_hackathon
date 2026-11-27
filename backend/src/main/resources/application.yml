@@ -3,8 +3,8 @@ spring:
     name: expenseflow
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/expenseflow}
-    username: ${DB_USER:expenseflow}
-    password: ${DB_PASSWORD:expenseflow}
+    username: ${DB_USER:${POSTGRES_USER:expenseflow}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:expenseflow}}
     hikari:
       maximum-pool-size: 20
   jpa:
@@ -92,3 +92,16 @@ spring:
 expenseflow:
   demo-login:
     enabled: true
+
+---
+# One-shot synthetic data job: no web server, exits when done.
+spring:
+  config:
+    activate:
+      on-profile: seed
+  main:
+    web-application-type: none
+logging:
+  level:
+    root: WARN
+    com.expenseflow.seed: INFO

@@ -13,6 +13,11 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, JpaSpecific
     @Query(value = "select nextval('claim_no_seq')", nativeQuery = true)
     long nextClaimNumber();
 
+    /** Row lock for approver actions: a concurrent second click waits, then sees the new version (409). */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Claim c where c.id = :id")
+    java.util.Optional<Claim> findForUpdate(Long id);
+
     boolean existsByEmployeeIdAndStatusIn(Long employeeId, Collection<ClaimStatus> statuses);
 
     List<Claim> findByStatusOrderByApprovedAtAsc(ClaimStatus status);

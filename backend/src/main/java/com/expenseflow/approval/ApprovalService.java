@@ -36,6 +36,7 @@ import java.util.Optional;
 public class ApprovalService {
 
     private final ApprovalStepRepository steps;
+    private final com.expenseflow.claim.ClaimRepository claims;
     private final ApprovalChainFactory chainFactory;
     private final SampleAuditSelector sampler;
     private final ApproverAuthority authority;
@@ -47,11 +48,13 @@ public class ApprovalService {
     private final AuditWriter audit;
     private final Clock clock;
 
-    public ApprovalService(ApprovalStepRepository steps, ApprovalChainFactory chainFactory,
+    public ApprovalService(ApprovalStepRepository steps, com.expenseflow.claim.ClaimRepository claims,
+                           ApprovalChainFactory chainFactory,
                            SampleAuditSelector sampler, ApproverAuthority authority, AccessPolicy access,
                            ClaimStateMachine stateMachine, ClaimCommentRepository comments,
                            EmployeeRepository employees, ConfigService config, AuditWriter audit, Clock clock) {
         this.steps = steps;
+        this.claims = claims;
         this.chainFactory = chainFactory;
         this.sampler = sampler;
         this.authority = authority;
@@ -207,9 +210,16 @@ public class ApprovalService {
     private record Ctx(Claim claim, ApprovalStep step, Acting acting) {
     }
 
-    /** 404 if not visible, 422 if nothing pending, 403 if not the current approver, 409 if stale. */
+    /**
+     * 404 if not visible, then 409 if stale (BR-28: a second tab or double click whose claim already
+     * moved on), 422 if nothing is pending, 403 if not the current approver.
+     */
     private Ctx load(Long claimId, int version, CurrentUser user) {
-        Claim claim = access.visibleClaim(user, claimId);
+        Claim claim = claims.findForUpdate(claimId).filter(c -> access.canView(user, c))
+                .orElseThrow(() -> ApiException.notFound("Claim"));
+        if (claim.getVersion() != version) {
+            throw ApiException.staleVersion();
+        }
         ApprovalStep step = steps.findFirstByClaimIdAndStatus(claimId, StepStatus.PENDING)
                 .orElseThrow(() -> ApiException.unprocessable("NOT_PENDING", "The claim is not waiting for approval"));
         if (claim.getEmployeeId().equals(user.id())) {
@@ -217,9 +227,6 @@ public class ApprovalService {
         }
         Acting acting = authority.resolve(user, step, claim)
                 .orElseThrow(() -> ApiException.forbidden("You are not the current approver of this claim"));
-        if (claim.getVersion() != version) {
-            throw ApiException.staleVersion();
-        }
         return new Ctx(claim, step, acting);
     }
 

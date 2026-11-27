@@ -51,6 +51,8 @@ class ClaimApiIT extends IntegrationTest {
         assertThat(d.at("/claim/totalAmount").decimalValue()).isEqualByComparingTo("450.50");
         assertThat(d.get("lines")).hasSize(1);
         assertThat(auditCount(id, "LINE_ADDED")).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_event WHERE claim_id = ? AND action = 'LINE_ADDED' "
+                + "AND after->>'lineId' IS NULL", Long.class, id)).as("audit rows carry the new line id").isZero();
         assertThat(auditCount(id, "LINE_UPDATED")).isEqualTo(1);
         assertThat(auditCount(id, "LINE_REMOVED")).isEqualTo(1);
     }

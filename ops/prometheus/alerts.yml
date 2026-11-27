@@ -1,0 +1,48 @@
+# Alerts described in docs/08-Runbook.md §4. Thresholds are in seconds.
+groups:
+  - name: expenseflow
+    rules:
+      - alert: OldestPendingApprovalTooOld
+        expr: max by (level) (expenseflow_oldest_pending_approval_seconds) > 48*3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A {{ $labels.level }} approval has been pending for more than 48 h"
+          runbook: "docs/08-Runbook.md#41-oldestpendingapprovaltooold"
+
+      - alert: OldestPendingApprovalCritical
+        expr: max by (level) (expenseflow_oldest_pending_approval_seconds) > 72*3600
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "A {{ $labels.level }} approval has been pending for more than 72 h"
+          runbook: "docs/08-Runbook.md#41-oldestpendingapprovaltooold"
+
+      - alert: QueueSizeHigh
+        expr: expenseflow_approval_queue_size{level="AUDITOR"} > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auditor queue has {{ $value }} pending claims"
+          runbook: "docs/08-Runbook.md#42-queuesizehigh"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{uri=~"/api/.*"}[5m]))) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency above 1 s"
+          runbook: "docs/08-Runbook.md#43-highlatency"
+
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend is not being scraped"
+          runbook: "docs/08-Runbook.md#44-backenddown"

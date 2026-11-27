@@ -84,7 +84,8 @@ public class ClaimService {
         l.setCreatedAt(clock.instant());
         c.addLine(l);
         c.setUpdatedAt(clock.instant());
-        claims.saveAndFlush(c);
+        // flush (not save/merge): cascade-persist keeps this instance, so l gets its id
+        claims.flush();
         stateMachine.record(c, "LINE_ADDED", user.id(), null, null, lineSnapshot(l));
         return l;
     }
@@ -98,6 +99,7 @@ public class ClaimService {
         apply(l, req);
         c.recomputeTotal();
         c.setUpdatedAt(clock.instant());
+        claims.flush(); // write the line while the claim is still editable (the R4 trigger checks status)
         stateMachine.record(c, "LINE_UPDATED", user.id(), null, before, lineSnapshot(l));
         return l;
     }
@@ -110,6 +112,7 @@ public class ClaimService {
         receipts.findByClaimLineId(lineId).ifPresent(receipts::delete);
         c.removeLine(l);
         c.setUpdatedAt(clock.instant());
+        claims.flush();
         stateMachine.record(c, "LINE_REMOVED", user.id(), null, before, null);
     }
 
@@ -206,7 +209,7 @@ public class ClaimService {
             n.setCreatedAt(clock.instant());
             copy.addLine(n);
         }
-        claims.saveAndFlush(copy);
+        claims.flush();
         for (int i = 0; i < src.getLines().size(); i++) {
             Long srcLine = src.getLines().get(i).getId();
             Long newLine = copy.getLines().get(i).getId();
