@@ -154,7 +154,7 @@ public class SeedRunner implements ApplicationRunner {
         staff.forEach(e -> users.put(e.getId(), new CurrentUser(e.getId(), e.getName(), e.roleSet())));
 
         // A historical delegation (manager EMP0008 on leave ~2 months ago) gives "on behalf of" history,
-        // and an active one (EMP0006 â†’ EMP0007) is available for the live demo.
+        // and an active one (EMP0006 Ã¢â€ â€™ EMP0007) is available for the live demo.
         LocalDate today = Ist.date(now);
         createDelegation(byCode.get("EMP0008"), byCode.get("EMP0009"), today.minusDays(65), today.minusDays(52),
                 "Annual leave");
@@ -555,17 +555,17 @@ public class SeedRunner implements ApplicationRunner {
                 ================ ExpenseFlow seed summary (synthetic data) ================
                 Employees: %d    Claims: %d    Payout batches: %d    (%.1f s)
                 Claims by status: %s
-                Planted anomalies (planted â†’ lines/claims detected by the engine):
-                  duplicate vendor+amount+date  %3d â†’ %d
-                  duplicate receipt hash        %3d â†’ %d
-                  limit breaches (OVER_LIMIT)   %3d â†’ %d
-                  weekend spend                 %3d â†’ %d
-                  claims > 25,000               %3d â†’ %d
-                  claims > 1,00,000             %3d â†’ %d
+                Planted anomalies (planted Ã¢â€ â€™ lines/claims detected by the engine):
+                  duplicate vendor+amount+date  %3d Ã¢â€ â€™ %d
+                  duplicate receipt hash        %3d Ã¢â€ â€™ %d
+                  limit breaches (OVER_LIMIT)   %3d Ã¢â€ â€™ %d
+                  weekend spend                 %3d Ã¢â€ â€™ %d
+                  claims > 25,000               %3d Ã¢â€ â€™ %d
+                  claims > 1,00,000             %3d Ã¢â€ â€™ %d
                 Sample-audited claims: %d    Split suspects: %d
                 Demo users (pick on the login screen):
                 %s
-                  Active delegation: EMP0006 â†’ EMP0007 (today + 5 days)
+                  Active delegation: EMP0006 Ã¢â€ â€™ EMP0007 (today + 5 days)
                 ===========================================================================
                 """.formatted(emp, cl, batches, ms / 1000.0, byStatus,
                 PLANT_DUP_VENDOR, dupVendor, PLANT_DUP_HASH, dupHash, PLANT_BREACH, breach, PLANT_WEEKEND, weekend,

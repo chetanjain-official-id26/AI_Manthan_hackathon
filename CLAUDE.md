@@ -70,6 +70,7 @@ seed/         Synthetic seed data
 - **BR-08** The finance head step is generated if total **> 1,00,000.00**. Exactly 1,00,000.00 does not get a finance head step.
 - **BR-09** Steps are generated as `approval_step` rows at submit time from the `approval_threshold` table, and they are snapshotted. Changing a threshold later does not change claims already in flight.
 - **BR-10** When the last step is approved, the claim moves to `APPROVED`. A claim at or below a threshold skips the higher steps.
+- **BR-10a** (R1, claim splitting) Thresholds use a rolling total: the claim total plus the same employee's other non-draft claims submitted within `split_window_days` (config, 7) whose expense dates lie within that window. If the rolling total adds a step the claim alone would not get, the step is added and `split_suspect = true`.
 
 ### 3.3 Policy rules (config only, never in code)
 Rules live in the `policy_rule` table (seeded from `policy.yml`). They are versioned, and each has an `action`.
@@ -83,6 +84,7 @@ Rules live in the `policy_rule` table (seeded from `policy.yml`). They are versi
 | `DUPLICATE_VENDOR_AMOUNT_DATE` | Same employee + vendor (normalised) + amount + date as an earlier line in this or any older non-draft claim | ROUTE (flag DUPLICATE) |
 | `DUPLICATE_RECEIPT_HASH` | Same receipt SHA-256 as any other line, across all employees | ROUTE (flag DUPLICATE) |
 | `WEEKEND_SPEND` | Expense date is a Saturday or Sunday (IST) | ROUTE (flag WEEKEND) |
+| `STALE_EXPENSE` | Expense date more than `params.maxAgeDays` (90) days before submit (R6). Future dates are rejected at line save (422) | ROUTE (flag STALE) |
 
 - **BR-11** Each line gets one outcome: `AUTO_APPROVE`, `ROUTE` or `AUTO_REJECT(reason)`.
 - **BR-12** The claim outcome is the worst line outcome, ordered AUTO_REJECT > ROUTE > AUTO_APPROVE.
@@ -109,7 +111,7 @@ Rules live in the `policy_rule` table (seeded from `policy.yml`). They are versi
 - **BR-25** Every state change, approval action, delegation change, policy rule change and payout action writes an audit row with actor, on-behalf-of, action, before (JSONB), after (JSONB) and timestamp (IST).
 - **BR-26** An employee sees only their own claims. A manager also sees direct reportees' claims plus claims delegated to them. Auditor and finance head see all.
 - **BR-27** A claim the caller may not see returns **404**, not 403.
-- **BR-28** The claim's `@Version` (optimistic locking) prevents double approval. A stale version returns 409.
+- **BR-28** The claim's `@Version` (optimistic locking) prevents double approval. A stale version returns 409. Approver actions also lock the claim row, and the version is checked before anything else, so a second click always gets 409.
 
 ---
 
@@ -134,7 +136,8 @@ Rules live in the `policy_rule` table (seeded from `policy.yml`). They are versi
 | E2E | `cd tests/e2e && npx playwright test` |
 | Run everything | `docker compose -f ops/docker-compose.yml up -d` |
 | Reset + reseed | `docker compose -f ops/docker-compose.yml down -v && docker compose -f ops/docker-compose.yml up -d` |
-| Seed only | `docker compose -f ops/docker-compose.yml run --rm seed` |
+| Seed only | `docker compose -f ops/docker-compose.yml run --rm seed` (backend image with the `seed` profile; idempotent) |
+| Integration tests only | `cd backend && ./mvnw test -Dtest='*IT'` (Docker required for Testcontainers) |
 
 App: http://localhost:5173 · API: http://localhost:8080 · Grafana: http://localhost:3000 · Prometheus: http://localhost:9090
 
